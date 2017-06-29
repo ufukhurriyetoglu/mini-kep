@@ -9,7 +9,6 @@ from collections import OrderedDict as odict
 
 import parse
 import files
-import splitter
 
 # risk areas: annual values, class of timestamps
 class Test_DateFunctions():
