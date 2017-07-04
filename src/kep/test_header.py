@@ -102,9 +102,9 @@ class Test_Header_Rows:
         assert hrows[1] == "Row <(уточненная оценка)>"
         assert hrows[2] == "Row <млрд.рублей>"   
 
-@pytest.fixture
-def header(header_rows):
-    return parse.Header(header_rows)
+@pytest.fixture(scope='function')
+def header(header_rows, request):
+    request.instance.header = parse.Header(header_rows)
 
 class Test_Header:
     
@@ -113,46 +113,62 @@ class Test_Header:
         assert parse.Header.KNOWN != parse.Header.UNKNOWN
     
     # on creation
-    
-    def test_on_creation_varname_and_unit_is_none(self, header):
+    @pytest.mark.usefixtures("header")
+    def test_on_creation_varname_and_unit_is_none(self, request):
+        header = request.instance.header
         assert header.varname is None
         assert header.unit is None
-        
-    def test_on_creation_textlines_is_list_of_strings(self, header):
+
+    @pytest.mark.usefixtures("header")
+    def test_on_creation_textlines_is_list_of_strings(self, request):
+        header = request.instance.header
         # IDEA: why to we still need .textlines? can access them from .processed
         assert header.textlines == ['Объем ВВП',
                              '(уточненная оценка)', 
                              'млрд.рублей']
 
-    def test_on_creation_processed_is_unknown(self, header):
-        assert header.processed['Объем ВВП'] == parse.Header.UNKNOWN 
+    @pytest.mark.usefixtures("header")
+    def test_on_creation_processed_is_unknown(self, request):
+        header = request.instance.header
+        assert header.processed['Объем ВВП'] == parse.Header.UNKNOWN
         assert header.processed['млрд.рублей'] == parse.Header.UNKNOWN 
 
-    def test_on_creation_has_unknown_lines(self, header):
+    @pytest.mark.usefixtures("header")
+    def test_on_creation_has_unknown_lines(self, request):
+        header = request.instance.header
         assert header.has_unknown_lines() is True
 
-    def test_on_creation_str(self, header):
+    @pytest.mark.usefixtures("header")
+    def test_on_creation_str(self, request):
+        header = request.instance.header
         assert header.__str__() == 'varname: None, unit: None\n- <Объем ВВП>\n- <(уточненная оценка)>\n- <млрд.рублей>'
 
     # after parsing 
-        
-    def test_set_varname_results_in_GDP(self, header, _pdef, _units):
+    @pytest.mark.usefixtures("header")
+    def test_set_varname_results_in_GDP(self, _pdef, _units, request):
+        header = request.instance.header
         header.set_varname(pdef=_pdef, units=_units)
         # IDEA: isolate work with units in set_varname() method 
         assert header.varname == 'GDP'        
         assert header.processed['Объем ВВП'] == parse.Header.KNOWN  
-     
-    def test_set_unit_results_in_bln_rub(self, header, _units):
+
+    @pytest.mark.usefixtures("header")
+    def test_set_unit_results_in_bln_rub(self, _units, request):
+        header = request.instance.header
         header.set_unit(units=_units)
         assert header.unit == 'bln_rub' 
         assert header.processed['млрд.рублей'] == parse.Header.KNOWN  
 
-    def test_after_parsing_has_unknown_lines(self, header, _pdef, _units):
+    @pytest.mark.usefixtures("header")
+    def test_after_parsing_has_unknown_lines(self, _pdef, _units, request):
+        header = request.instance.header
         header.set_unit(units=_units)
         header.set_varname(pdef=_pdef, units=_units)
         assert header.has_unknown_lines() is True
 
-    def test_after_parsing_str(self, header):
+    @pytest.mark.usefixtures("header")
+    def test_after_parsing_str(self, request):
+        header = request.instance.header
         assert header.__str__() == ('varname: None, unit: None\n'
                                     '- <Объем ВВП>\n'
                                     '- <(уточненная оценка)>\n'
@@ -163,38 +179,47 @@ def tables(csv_path, _pdef, _units):
     rows = parse.read_csv(csv_path)
     return parse.get_tables_from_rows_segment(rows, _pdef, _units)
 
-@pytest.fixture
-def table(tables):
-    return tables[0]
+@pytest.fixture(scope='function')
+def table(tables, request):
+    request.instance.table = tables[0]
 
 class Test_Table_except_header():
-    
-    # FIXME: apparently cannot pass fixture to a setup_mathod in pytest
-    #def setup_method(self):
-    #    self.table = sample_table_gdp()
 
-    def test_Table_instance_column_number(self, table):
-        assert table.coln == 5
+    @pytest.mark.usefixtures("table")
+    def test_Table_instance_column_number(self, request):
+        assert request.instance.table.coln == 5
 
-    def test_Table_instance_datarows(self, table):
+    @pytest.mark.usefixtures("table")
+    def test_Table_instance_datarows(self, request):
+        table = request.instance.table
         assert len(table.datarows) == 1
         row = table.datarows[0]
         assert row.name == '1991 1)'
         assert row.data == ["100", "20", "30", "40", "10"]        
-        
-    def test_Table_instance_has_splitter(self, table):     
+
+    @pytest.mark.usefixtures("table")
+    def test_Table_instance_has_splitter(self, request):
+        table = request.instance.table
         assert table.splitter_func == splitter.split_row_by_year_and_qtr
-                
-    def test_Table_is_defined(self, table):
+
+    @pytest.mark.usefixtures("table")
+    def test_Table_is_defined(self, request):
+        table = request.instance.table
         assert table.is_defined() is True
 
-    def test_Table_label(self, table):
+    @pytest.mark.usefixtures("table")
+    def test_Table_label(self, request):
+        table = request.instance.table
         assert table.label == 'GDP_bln_rub'
 
-    def test_Table_repr(self, table):
+    @pytest.mark.usefixtures("table")
+    def test_Table_repr(self, request):
+        table = request.instance.table
         assert table.__repr__() == 'Table GDP_bln_rub (headers: 3, datarows: 1)'
 
-    def test_Table_str(self, table):
+    @pytest.mark.usefixtures("table")
+    def test_Table_str(self, request):
+        table = request.instance.table
         print(table)
         assert table.__str__() == """Table GDP_bln_rub
 columns: 5
